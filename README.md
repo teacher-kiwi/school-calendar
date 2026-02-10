@@ -58,4 +58,4 @@ school-calendar/
 
 ## 📝 라이선스
 
-This project is private software for internal use.
+This project is licensed under the [MIT License](LICENSE).
