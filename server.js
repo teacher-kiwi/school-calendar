@@ -1,6 +1,6 @@
 require("dotenv").config();
 const express = require("express");
-const session = require("express-session");
+const cookieSession = require("cookie-session");
 const passport = require("passport");
 const path = require("path");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
@@ -19,16 +19,30 @@ app.use(express.urlencoded({ extended: true }));
 
 // Session Setup
 app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "dev_secret",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    },
+  cookieSession({
+    name: "session",
+    keys: [process.env.SESSION_SECRET || "dev_secret"],
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    sameSite: "lax",
   }),
 );
+
+// Compatibility shim for passport (which expects express-session methods)
+app.use((req, res, next) => {
+  if (req.session && !req.session.regenerate) {
+    req.session.regenerate = (cb) => {
+      cb();
+    };
+  }
+  if (req.session && !req.session.save) {
+    req.session.save = (cb) => {
+      cb();
+    };
+  }
+  next();
+});
 
 // Passport Setup
 app.use(passport.initialize());
