@@ -6,6 +6,7 @@ const path = require("path");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
@@ -29,7 +30,8 @@ app.use(
   }),
 );
 
-// Compatibility shim for passport (which expects express-session methods)
+// Passport 0.6.0+ requires req.session.regenerate and req.session.save,
+// which cookie-session does not provide. We polyfill them here.
 app.use((req, res, next) => {
   if (req.session && !req.session.regenerate) {
     req.session.regenerate = (cb) => {
