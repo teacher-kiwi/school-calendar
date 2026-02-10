@@ -13,8 +13,6 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production",
-    "SCHOOL_NAME_KO": "스쿨",
-    "SCHOOL_NAME_EN": "School"
+    "NODE_ENV": "production"
   }
 }
