@@ -173,9 +173,12 @@
 /* 일일 일정 카드 */
 .day-schedule {
   padding: 4px 8px 8px 8px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 .day-event-card {
   transition: all 0.15s;
+  word-break: break-all; /* 긴 단어 강제 줄바꿈 (레이아웃 깨짐 방지) */
 }
 .day-event-card:hover {
   transform: translateX(-4px);

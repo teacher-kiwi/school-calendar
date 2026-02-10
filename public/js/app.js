@@ -57,7 +57,7 @@ function initCalendar() {
       return arg.dayNumberText.replace("일", "");
     },
     fixedWeekCount: false,
-    height: "auto",
+    height: "100%",
 
     // 날짜 클릭 - 오른쪽 패널에 일정 표시
     dateClick: function (info) {
