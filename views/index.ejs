@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= schoolNameKo %> 캘린더</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FullCalendar -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/locales/ko.global.min.js"></script>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <!-- 헤더 -->
+    <header
+      class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg"
+    >
+      <div
+        class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold leading-tight"><%= schoolNameKo %> 캘린더</h1>
+            <p class="text-xs text-blue-200">학교 일정 및 특별실 예약</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div id="userInfo" class="text-sm text-blue-100">
+            <span class="flex items-center gap-2">
+              <span><%= user.email %></span>
+              <% if (user.isAdmin) { %>
+                <span class="bg-amber-400/30 text-amber-100 px-2 py-0.5 rounded text-xs">관리자</span>
+              <% } %>
+              <a href="/logout" class="ml-2 text-xs opacity-70 hover:opacity-100 border border-white/30 px-2 py-0.5 rounded">로그아웃</a>
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 메인 컨텐츠: 좌우 분할 -->
+    <main class="max-w-7xl mx-auto px-4 py-4">
+      <div class="flex flex-col lg:flex-row gap-4">
+        <!-- 왼쪽: 월별 캘린더 -->
+        <div class="lg:w-3/5">
+          <div class="bg-white rounded-2xl shadow-lg p-4">
+            <!-- 범례 -->
+            <div class="flex flex-wrap gap-3 text-xs mb-3 pb-3 border-b">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                <span class="text-gray-600">행사</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span class="text-gray-600">예약</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                <span class="text-gray-600">공휴일</span>
+              </div>
+            </div>
+            <div id="calendar"></div>
+          </div>
+        </div>
+
+        <!-- 오른쪽: 일일 일정 -->
+        <div class="lg:w-2/5">
+          <div
+            class="bg-white rounded-2xl shadow-lg p-4 h-full min-h-[500px] flex flex-col"
+          >
+            <!-- 날짜 헤더 -->
+            <div class="flex items-center justify-between mb-4 pb-3 border-b">
+              <div>
+                <h2
+                  id="selectedDateTitle"
+                  class="text-lg font-bold text-gray-800"
+                >
+                  오늘
+                </h2>
+              </div>
+              <button
+                onclick="openEventModal(selectedDateStr)"
+                class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+              >
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                추가
+              </button>
+            </div>
+
+            <!-- 일정 목록 -->
+            <div
+              id="daySchedule"
+              class="day-schedule flex-1 overflow-y-auto space-y-3"
+            ></div>
+
+            <!-- 빈 상태 -->
+            <div
+              id="emptyState"
+              class="hidden flex-1 flex flex-col items-center justify-center text-center py-8"
+            >
+              <div
+                class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"
+              >
+                <svg
+                  class="w-8 h-8 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <p class="text-gray-500 font-medium">일정이 없습니다</p>
+              <p class="text-gray-400 text-sm mt-1">
+                이 날짜에 새 일정을 추가해보세요
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 이벤트 모달 -->
+    <div id="eventModal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <div class="flex items-center justify-between mb-6">
+          <h2 id="modalTitle" class="text-xl font-bold text-gray-800">
+            새 일정 등록
+          </h2>
+          <button
+            onclick="closeEventModal()"
+            class="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <form id="eventForm" onsubmit="saveEvent(event)">
+          <input type="hidden" id="eventId" />
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >구분</label
+            >
+            <div class="flex gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="category"
+                  value="행사"
+                  checked
+                  class="w-4 h-4 text-blue-600"
+                />
+                <span class="text-sm text-gray-700">행사</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="category"
+                  value="예약"
+                  class="w-4 h-4 text-emerald-600"
+                />
+                <span class="text-sm text-gray-700">예약</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="title"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >제목 *</label
+            >
+            <input
+              type="text"
+              id="title"
+              name="title"
+              required
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="예: 3학년 수학여행, 과학실 사용"
+            />
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="date"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >날짜 *</label
+            >
+            <input
+              type="date"
+              id="date"
+              name="date"
+              required
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >시간</label
+            >
+            <div class="flex items-center gap-2">
+              <input
+                type="time"
+                id="startTime"
+                name="startTime"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <span class="text-gray-500">~</span>
+              <input
+                type="time"
+                id="endTime"
+                name="endTime"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="location"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >장소</label
+            >
+            <input
+              type="text"
+              id="location"
+              name="location"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="예: 과학실, 체육관, 정보실"
+            />
+          </div>
+
+          <div class="mb-6">
+            <label
+              for="description"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >상세 내용</label
+            >
+            <textarea
+              id="description"
+              name="description"
+              rows="3"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              placeholder="추가 정보를 입력하세요..."
+            ></textarea>
+          </div>
+
+          <div
+            id="eventMeta"
+            class="hidden mb-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-600"
+          >
+            <div id="createdByInfo"></div>
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              type="button"
+              id="deleteBtn"
+              onclick="deleteEvent()"
+              class="hidden px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
+            >
+              삭제
+            </button>
+            <div class="flex-1"></div>
+            <button
+              type="button"
+              onclick="closeEventModal()"
+              class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              id="submitBtn"
+              class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              저장
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const currentUser = <%- JSON.stringify(user) %>;
+    </script>
+    <script src="/js/app.js"></script>
+  </body>
+</html>
