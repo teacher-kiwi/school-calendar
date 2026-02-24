@@ -368,6 +368,47 @@ function showEventDetail(eventId) {
 // 이벤트 모달
 // ============================================
 
+function onRepeatChange() {
+  const repeatType = document.querySelector('input[name="repeatType"]:checked').value;
+  const dateSeparator = document.getElementById("dateSeparator");
+  const dateEnd = document.getElementById("dateEnd");
+  const weekdayCheckboxes = document.getElementById("weekdayCheckboxes");
+
+  if (repeatType === "none") {
+    dateSeparator.classList.add("hidden");
+    dateEnd.classList.add("hidden");
+    dateEnd.required = false;
+    weekdayCheckboxes.classList.add("hidden");
+  } else if (repeatType === "daily") {
+    dateSeparator.classList.remove("hidden");
+    dateEnd.classList.remove("hidden");
+    dateEnd.required = true;
+    weekdayCheckboxes.classList.add("hidden");
+  } else if (repeatType === "weekday") {
+    dateSeparator.classList.remove("hidden");
+    dateEnd.classList.remove("hidden");
+    dateEnd.required = true;
+    weekdayCheckboxes.classList.remove("hidden");
+  }
+}
+
+function getDateRange(startStr, endStr) {
+  const dates = [];
+  const current = new Date(startStr);
+  const end = new Date(endStr);
+  while (current <= end) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
+function formatDateStr(d) {
+  return d.getFullYear() + "-" +
+    String(d.getMonth() + 1).padStart(2, "0") + "-" +
+    String(d.getDate()).padStart(2, "0");
+}
+
 function openEventModal(dateStr) {
   currentEvent = null;
   document.getElementById("eventForm").reset();
@@ -377,11 +418,18 @@ function openEventModal(dateStr) {
   document.getElementById("eventMeta").classList.add("hidden");
   document.getElementById("submitBtn").textContent = "저장";
 
+  // 반복 옵션 리셋
+  document.getElementById("repeatOptions").classList.remove("hidden");
+  document.querySelector('input[name="repeatType"][value="none"]').checked = true;
+  document.getElementById("dateEnd").value = "";
+  document.querySelectorAll('input[name="weekday"]').forEach(cb => cb.checked = false);
+  onRepeatChange();
+
   // 기본값 설정
   const dateEl = document.getElementById("date");
   dateEl.value = dateStr || selectedDateStr || getTodayStr();
-  dateEl.readOnly = true;
-  dateEl.classList.add("bg-gray-100");
+  // dateEl.readOnly = true;
+  // dateEl.classList.add("bg-gray-100");
 
   // 기본 시간 설정 (현재 시간)
   const now = new Date();
@@ -400,6 +448,14 @@ function openEditModal(event) {
   document.getElementById("eventId").value = event.id;
   document.getElementById("modalTitle").textContent = "일정 수정";
   document.getElementById("title").value = event.title;
+
+  // 수정 시 반복 옵션 숨김
+  document.getElementById("repeatOptions").classList.add("hidden");
+  document.querySelector('input[name="repeatType"][value="none"]').checked = true;
+  document.getElementById("dateSeparator").classList.add("hidden");
+  document.getElementById("dateEnd").classList.add("hidden");
+  document.getElementById("dateEnd").required = false;
+  document.getElementById("weekdayCheckboxes").classList.add("hidden");
 
   const dateEl = document.getElementById("date");
   dateEl.value = event.start; // startStr is for FullCalendar objects, start is for our raw data
@@ -478,6 +534,42 @@ async function saveEvent(e) {
 
   const eventId = document.getElementById("eventId").value;
   const isEdit = !!eventId;
+  const repeatType = document.querySelector('input[name="repeatType"]:checked').value;
+
+  // 반복 일정 유효성 검사
+  if (!isEdit && repeatType !== "none") {
+    const dateEnd = document.getElementById("dateEnd").value;
+    if (!dateEnd) {
+      Swal.fire({
+        icon: "warning",
+        title: "입력 오류",
+        text: "끝 날짜를 선택해주세요.",
+        confirmButtonColor: "#3b82f6",
+      });
+      return;
+    }
+    if (dateEnd < formData.date) {
+      Swal.fire({
+        icon: "warning",
+        title: "입력 오류",
+        text: "끝 날짜가 시작 날짜보다 이전입니다.",
+        confirmButtonColor: "#3b82f6",
+      });
+      return;
+    }
+    if (repeatType === "weekday") {
+      const checked = document.querySelectorAll('input[name="weekday"]:checked');
+      if (checked.length === 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "입력 오류",
+          text: "반복할 요일을 선택해주세요.",
+          confirmButtonColor: "#3b82f6",
+        });
+        return;
+      }
+    }
+  }
 
   Swal.fire({
     title: "저장 중...",
@@ -486,30 +578,71 @@ async function saveEvent(e) {
   });
 
   try {
-    const url = isEdit ? `/api/events/${eventId}` : "/api/events";
-    const method = isEdit ? "PUT" : "POST";
+    if (isEdit || repeatType === "none") {
+      // 단일 저장 (기존 로직)
+      const url = isEdit ? `/api/events/${eventId}` : "/api/events";
+      const method = isEdit ? "PUT" : "POST";
 
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(formData),
-    });
+      const response = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    const result = await response.json();
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "저장 실패");
 
-    if (!response.ok) {
-      throw new Error(result.message || "저장 실패");
+      Swal.fire({
+        icon: "success",
+        title: "저장 완료",
+        text: result.message,
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } else {
+      // 반복 저장 (배치)
+      const dateEnd = document.getElementById("dateEnd").value;
+      let dates = getDateRange(formData.date, dateEnd);
+
+      if (repeatType === "weekday") {
+        const selectedDays = Array.from(
+          document.querySelectorAll('input[name="weekday"]:checked')
+        ).map(cb => parseInt(cb.value));
+        dates = dates.filter(d => selectedDays.includes(d.getDay()));
+      }
+
+      if (dates.length === 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "입력 오류",
+          text: "선택한 조건에 해당하는 날짜가 없습니다.",
+          confirmButtonColor: "#3b82f6",
+        });
+        return;
+      }
+
+      const events = dates.map(d => ({
+        ...formData,
+        date: formatDateStr(d),
+      }));
+
+      const response = await fetch("/api/events/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "저장 실패");
+
+      Swal.fire({
+        icon: "success",
+        title: "저장 완료",
+        text: result.message,
+        timer: 1500,
+        showConfirmButton: false,
+      });
     }
-
-    Swal.fire({
-      icon: "success",
-      title: "저장 완료",
-      text: result.message,
-      timer: 1500,
-      showConfirmButton: false,
-    });
 
     closeEventModal();
     loadEvents();

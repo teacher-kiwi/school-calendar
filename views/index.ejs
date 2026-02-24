@@ -238,23 +238,51 @@
               name="title"
               required
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="예: 3학년 수학여행, 과학실 사용"
+              placeholder="예: 3학년 체험학습, 동아리실 사용"
             />
           </div>
 
           <div class="mb-4">
-            <label
-              for="date"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >날짜 *</label
-            >
-            <input
-              type="date"
-              id="date"
-              name="date"
-              required
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <label class="block text-sm font-medium text-gray-700 mb-1">날짜 *</label>
+            <div id="repeatOptions" class="flex gap-3 mb-2">
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="radio" name="repeatType" value="none" checked onchange="onRepeatChange()" class="w-4 h-4 text-blue-600" />
+                <span class="text-sm text-gray-700">반복 안함</span>
+              </label>
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="radio" name="repeatType" value="daily" onchange="onRepeatChange()" class="w-4 h-4 text-blue-600" />
+                <span class="text-sm text-gray-700">매일 반복</span>
+              </label>
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="radio" name="repeatType" value="weekday" onchange="onRepeatChange()" class="w-4 h-4 text-blue-600" />
+                <span class="text-sm text-gray-700">요일 반복</span>
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                type="date"
+                id="date"
+                name="date"
+                required
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <span id="dateSeparator" class="text-gray-500 hidden">~</span>
+              <input
+                type="date"
+                id="dateEnd"
+                name="dateEnd"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent hidden"
+              />
+            </div>
+            <div id="weekdayCheckboxes" class="hidden flex gap-2 mt-2 flex-wrap">
+              <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="weekday" value="0" class="w-4 h-4 text-blue-600" /><span class="text-sm text-gray-700">일</span></label>
+              <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="weekday" value="1" class="w-4 h-4 text-blue-600" /><span class="text-sm text-gray-700">월</span></label>
+              <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="weekday" value="2" class="w-4 h-4 text-blue-600" /><span class="text-sm text-gray-700">화</span></label>
+              <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="weekday" value="3" class="w-4 h-4 text-blue-600" /><span class="text-sm text-gray-700">수</span></label>
+              <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="weekday" value="4" class="w-4 h-4 text-blue-600" /><span class="text-sm text-gray-700">목</span></label>
+              <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="weekday" value="5" class="w-4 h-4 text-blue-600" /><span class="text-sm text-gray-700">금</span></label>
+              <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" name="weekday" value="6" class="w-4 h-4 text-blue-600" /><span class="text-sm text-gray-700">토</span></label>
+            </div>
           </div>
 
           <div class="mb-4">
@@ -289,7 +317,7 @@
               id="location"
               name="location"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="예: 과학실, 체육관, 정보실"
+              placeholder="예: 과학실, 체육관, 동아리실"
             />
           </div>
 

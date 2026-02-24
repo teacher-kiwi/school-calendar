@@ -248,6 +248,20 @@ app.post("/api/events", ensureAuthenticated, async (req, res) => {
   }
 });
 
+app.post("/api/events/batch", ensureAuthenticated, async (req, res) => {
+  try {
+    const { events } = req.body;
+    if (!Array.isArray(events) || events.length === 0) {
+      return res.status(400).json({ message: "일정 목록이 비어있습니다." });
+    }
+    const result = await sheets.addEvents(events, req.user);
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 app.put("/api/events/:id", ensureAuthenticated, async (req, res) => {
   try {
     // Check ownership or admin
