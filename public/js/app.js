@@ -130,6 +130,9 @@ async function loadEvents() {
 
     // 현재 선택된 날짜 유지 (없으면 오늘)
     selectDate(selectedDateStr || getTodayStr());
+
+    // 엑셀 다운로드 드롭다운 갱신
+    populateMonthSelect();
   } catch (error) {
     console.error("이벤트 로드 실패:", error);
     document.getElementById("calendar").classList.remove("loading");
@@ -140,6 +143,80 @@ async function loadEvents() {
       confirmButtonColor: "#3b82f6",
     });
   }
+}
+
+// ============================================
+// 엑셀 다운로드
+// ============================================
+
+function isHolidayEvent(ev) {
+  return ev.extendedProps?.isHoliday || ev.extendedProps?.category === "공휴일";
+}
+
+function populateMonthSelect() {
+  const select = document.getElementById("monthSelect");
+  if (!select) return;
+
+  const months = [
+    ...new Set(
+      allEvents
+        .filter((ev) => !isHolidayEvent(ev))
+        .map((ev) => (ev.start || "").slice(0, 7))
+        .filter(Boolean)
+    ),
+  ].sort((a, b) => b.localeCompare(a));
+
+  select.innerHTML = '<option value="">월 선택</option>';
+  months.forEach((m) => {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = m;
+    select.appendChild(opt);
+  });
+}
+
+function downloadExcel() {
+  const select = document.getElementById("monthSelect");
+  const selectedMonth = select?.value;
+  if (!selectedMonth) {
+    Swal.fire({
+      icon: "warning",
+      title: "월을 선택해주세요",
+      confirmButtonColor: "#3b82f6",
+    });
+    return;
+  }
+
+  const filtered = allEvents.filter(
+    (ev) => !isHolidayEvent(ev) && (ev.start || "").startsWith(selectedMonth)
+  );
+
+  if (filtered.length === 0) {
+    Swal.fire({
+      icon: "info",
+      title: "데이터 없음",
+      text: "해당 월에 등록된 일정이 없습니다.",
+      confirmButtonColor: "#3b82f6",
+    });
+    return;
+  }
+
+  const data = filtered
+    .sort((a, b) => (a.start || "").localeCompare(b.start || ""))
+    .map((ev) => ({
+      "날짜(Date)": ev.start || "",
+      "시간(Time)": ev.extendedProps?.time || "",
+      "카테고리(Category)": ev.extendedProps?.category || "",
+      "제목(Title)": ev.title || "",
+      "장소(Location)": ev.extendedProps?.location || "",
+      "내용(Description)": ev.extendedProps?.description || "",
+      "작성자(Creator Email)": ev.extendedProps?.createdBy || "",
+    }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, selectedMonth);
+  XLSX.writeFile(wb, `${currentSchoolNameEn}_calendar_${selectedMonth}.xlsx`);
 }
 
 /**
