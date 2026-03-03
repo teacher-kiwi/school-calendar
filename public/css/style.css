@@ -1,3 +1,9 @@
+/* 드롭다운 옵션 (Windows Chrome에서 부모 text-white 상속 방지) */
+#monthSelect option {
+  color: #1f2937;
+  background: white;
+}
+
 /* 모달 오버레이 */
 .modal-overlay {
   position: fixed;
