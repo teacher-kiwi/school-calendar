@@ -3,11 +3,31 @@
 // ============================================
 
 let calendar;
-// currentUser is injected via EJS in index.ejs
+// currentUser, currentCategories are injected via EJS in index.ejs
 let currentEvent = null;
 let allEvents = [];
 let selectedDateStr = "";
 let selectedDayCell = null;
+
+// Tailwind color class lookup (full class names for JIT compatibility)
+const COLOR_CLASSES = {
+  blue:    { dot: "bg-blue-500", cardBg: "bg-blue-50 border-blue-200", badge: "bg-blue-100 text-blue-700" },
+  emerald: { dot: "bg-emerald-500", cardBg: "bg-emerald-50 border-emerald-200", badge: "bg-emerald-100 text-emerald-700" },
+  red:     { dot: "bg-red-500", cardBg: "bg-red-50 border-red-200", badge: "bg-red-100 text-red-700" },
+  amber:   { dot: "bg-amber-500", cardBg: "bg-amber-50 border-amber-200", badge: "bg-amber-100 text-amber-700" },
+  purple:  { dot: "bg-purple-500", cardBg: "bg-purple-50 border-purple-200", badge: "bg-purple-100 text-purple-700" },
+  pink:    { dot: "bg-pink-500", cardBg: "bg-pink-50 border-pink-200", badge: "bg-pink-100 text-pink-700" },
+  teal:    { dot: "bg-teal-500", cardBg: "bg-teal-50 border-teal-200", badge: "bg-teal-100 text-teal-700" },
+  orange:  { dot: "bg-orange-500", cardBg: "bg-orange-50 border-orange-200", badge: "bg-orange-100 text-orange-700" },
+  cyan:    { dot: "bg-cyan-500", cardBg: "bg-cyan-50 border-cyan-200", badge: "bg-cyan-100 text-cyan-700" },
+  gray:    { dot: "bg-gray-500", cardBg: "bg-gray-50 border-gray-200", badge: "bg-gray-100 text-gray-700" },
+};
+
+function getCategoryColor(categoryName) {
+  const cat = (typeof currentCategories !== "undefined" ? currentCategories : [])
+    .find((c) => c.name === categoryName);
+  return COLOR_CLASSES[cat?.color] || COLOR_CLASSES.gray;
+}
 
 // ============================================
 // 초기화
@@ -251,10 +271,6 @@ function updateDayCellContent(cellEl, date) {
   const holidays = dayEvents.filter(
     (e) => e.extendedProps?.isHoliday || e.extendedProps?.category === "공휴일",
   );
-  const events = dayEvents.filter((e) => e.extendedProps?.category === "행사");
-  const reservations = dayEvents.filter(
-    (e) => e.extendedProps?.category === "예약",
-  );
 
   // 공휴일 표시
   holidays.forEach((h) => {
@@ -264,21 +280,17 @@ function updateDayCellContent(cellEl, date) {
     contentEl.appendChild(div);
   });
 
-  // 행사 카운트
-  if (events.length > 0) {
-    const div = document.createElement("div");
-    div.className = "flex items-center gap-1 text-xs px-3 py-0.5";
-    div.innerHTML = `<span class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span><span class="text-gray-700">${events.length}개</span>`;
-    contentEl.appendChild(div);
-  }
-
-  // 예약 카운트
-  if (reservations.length > 0) {
-    const div = document.createElement("div");
-    div.className = "flex items-center gap-1 text-xs px-3 py-0.5";
-    div.innerHTML = `<span class="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0"></span><span class="text-gray-700">${reservations.length}개</span>`;
-    contentEl.appendChild(div);
-  }
+  // 카테고리별 카운트
+  (typeof currentCategories !== "undefined" ? currentCategories : []).forEach((cat) => {
+    const catEvents = dayEvents.filter((e) => e.extendedProps?.category === cat.name);
+    if (catEvents.length > 0) {
+      const colors = COLOR_CLASSES[cat.color] || COLOR_CLASSES.gray;
+      const div = document.createElement("div");
+      div.className = "flex items-center gap-1 text-xs px-3 py-0.5";
+      div.innerHTML = `<span class="w-2 h-2 ${colors.dot} rounded-full flex-shrink-0"></span><span class="text-gray-700">${catEvents.length}개</span>`;
+      contentEl.appendChild(div);
+    }
+  });
 }
 
 /**
@@ -348,18 +360,15 @@ function updateDaySchedule(dateStr) {
     .map((event) => {
       const props = event.extendedProps;
       const isHoliday = props.isHoliday || props.category === "공휴일";
-      const isEvent = props.category === "행사";
 
       let bgColor, dotColor;
       if (isHoliday) {
         bgColor = "bg-red-50 border-red-200";
         dotColor = "bg-red-500";
-      } else if (isEvent) {
-        bgColor = "bg-blue-50 border-blue-200";
-        dotColor = "bg-blue-500";
       } else {
-        bgColor = "bg-emerald-50 border-emerald-200";
-        dotColor = "bg-emerald-500";
+        const colors = getCategoryColor(props.category);
+        bgColor = colors.cardBg;
+        dotColor = colors.dot;
       }
 
       // 공휴일은 클릭 불필요
@@ -400,16 +409,18 @@ function showEventDetail(eventId) {
   if (!event) return;
 
   const props = event.extendedProps;
-  const canEdit =
+  const canEdit = currentUser && (
     props.createdBy.toLowerCase() === currentUser.email.toLowerCase() ||
-    currentUser.isAdmin;
+    currentUser.isAdmin
+  );
+  const catColors = getCategoryColor(props.category);
 
   Swal.fire({
     title: event.title,
     html: `
     <div class="text-left space-y-3">
       <div class="flex items-center gap-2">
-        <span class="px-2 py-0.5 rounded text-xs font-medium ${props.category === "행사" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"}">${props.category}</span>
+        <span class="px-2 py-0.5 rounded text-xs font-medium ${catColors.badge}">${props.category}</span>
         ${props.modifiedBy ? '<span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-700">수정됨</span>' : ""}
       </div>
       <div class="space-y-2 text-sm text-gray-600">

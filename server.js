@@ -118,6 +118,18 @@ passport.use(
 
 const sheets = require("./lib/sheets");
 
+// Parse categories from environment
+const CATEGORIES = (() => {
+  try {
+    const parsed = JSON.parse(process.env.CATEGORIES || "[]");
+    if (parsed.length > 0) return parsed;
+  } catch {}
+  return [
+    { name: "행사", color: "blue", isPublic: true },
+    { name: "예약", color: "emerald", isPublic: false },
+  ];
+})();
+
 // ==========================================
 // Helpers
 // ==========================================
@@ -209,29 +221,35 @@ app.get("/logout", (req, res, next) => {
   });
 });
 
-// Calendar Page (Protected)
-app.get(
-  "/calendar",
-  (req, res, next) => {
-    if (req.isAuthenticated()) {
-      return next();
-    }
-    res.redirect("/");
-  },
-  (req, res) => {
-    res.render("index", {
-      user: req.user,
-      schoolNameKo: process.env.SCHOOL_NAME_KO || "스쿨",
-      schoolNameEn: process.env.SCHOOL_NAME_EN || "School",
-    });
-  },
-);
+// Calendar Page (Public - guests can view)
+app.get("/calendar", (req, res) => {
+  const isLoggedIn = req.isAuthenticated();
+  res.render("index", {
+    user: req.user || null,
+    schoolNameKo: process.env.SCHOOL_NAME_KO || "스쿨",
+    schoolNameEn: process.env.SCHOOL_NAME_EN || "School",
+    categories: isLoggedIn
+      ? CATEGORIES
+      : CATEGORIES.filter((c) => c.isPublic),
+  });
+});
 
 // API Routes
-app.get("/api/events", ensureAuthenticated, async (req, res) => {
+app.get("/api/events", async (req, res) => {
   try {
-    const events = await sheets.getEvents();
-    res.json(events);
+    const events = await sheets.getEvents(CATEGORIES);
+
+    if (req.isAuthenticated()) {
+      res.json(events);
+    } else {
+      const publicNames = CATEGORIES.filter((c) => c.isPublic).map((c) => c.name);
+      const filtered = events.filter(
+        (ev) =>
+          ev.extendedProps?.isHoliday ||
+          publicNames.includes(ev.extendedProps?.category),
+      );
+      res.json(filtered);
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
