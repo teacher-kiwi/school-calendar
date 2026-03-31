@@ -29,6 +29,17 @@ function getCategoryColor(categoryName) {
   return COLOR_CLASSES[cat?.color] || COLOR_CLASSES.gray;
 }
 
+// HTML 이스케이프 (XSS 방지)
+function escapeHtml(str) {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // ============================================
 // 초기화
 // ============================================
@@ -276,7 +287,7 @@ function updateDayCellContent(cellEl, date) {
   holidays.forEach((h) => {
     const div = document.createElement("div");
     div.className = "flex items-center gap-1 text-xs px-3 py-0.5";
-    div.innerHTML = `<span class="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></span><span class="truncate text-red-600 font-medium">${h.title}</span>`;
+    div.innerHTML = `<span class="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></span><span class="truncate text-red-600 font-medium">${escapeHtml(h.title)}</span>`;
     contentEl.appendChild(div);
   });
 
@@ -384,15 +395,15 @@ function updateDaySchedule(dateStr) {
       <div class="flex items-start gap-3">
         <div class="w-2 h-2 ${dotColor} rounded-full mt-2 flex-shrink-0"></div>
         <div class="flex-1 min-w-0">
-          <h3 class="font-semibold text-gray-800 truncate">${event.title}</h3>
+          <h3 class="font-semibold text-gray-800 truncate">${escapeHtml(event.title)}</h3>
           ${
             !isHoliday
               ? `
           <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-sm text-gray-600">
-            ${props.time ? `<span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>${props.time}</span>` : ""}
-            ${props.location ? `<span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>${props.location}</span>` : ""}
+            ${props.time ? `<span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>${escapeHtml(props.time)}</span>` : ""}
+            ${props.location ? `<span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>${escapeHtml(props.location)}</span>` : ""}
           </div>
-          ${props.description ? `<p class="mt-2 text-sm text-gray-500 line-clamp-2">${props.description}</p>` : ""}
+          ${props.description ? `<p class="mt-2 text-sm text-gray-500 line-clamp-2">${escapeHtml(props.description)}</p>` : ""}
           `
               : ""
           }
@@ -416,22 +427,22 @@ function showEventDetail(eventId) {
   const catColors = getCategoryColor(props.category);
 
   Swal.fire({
-    title: event.title,
+    title: escapeHtml(event.title),
     html: `
     <div class="text-left space-y-3">
       <div class="flex items-center gap-2">
-        <span class="px-2 py-0.5 rounded text-xs font-medium ${catColors.badge}">${props.category}</span>
+        <span class="px-2 py-0.5 rounded text-xs font-medium ${catColors.badge}">${escapeHtml(props.category)}</span>
         ${props.modifiedBy ? '<span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-700">수정됨</span>' : ""}
       </div>
       <div class="space-y-2 text-sm text-gray-600">
         <p><strong>날짜:</strong> ${formatDateKorean(event.start)}</p>
-        ${props.time ? `<p><strong>시간:</strong> ${props.time}</p>` : ""}
-        ${props.location ? `<p><strong>장소:</strong> ${props.location}</p>` : ""}
-        ${props.description ? `<p><strong>내용:</strong> ${props.description}</p>` : ""}
+        ${props.time ? `<p><strong>시간:</strong> ${escapeHtml(props.time)}</p>` : ""}
+        ${props.location ? `<p><strong>장소:</strong> ${escapeHtml(props.location)}</p>` : ""}
+        ${props.description ? `<p><strong>내용:</strong> ${escapeHtml(props.description)}</p>` : ""}
       </div>
       <div class="pt-3 border-t text-xs text-gray-400">
-        작성: ${props.creatorName ? `${props.creatorName} (${props.createdBy})` : props.createdBy}
-        ${props.modifiedBy ? `<br>수정: ${props.modifierName ? `${props.modifierName} (${props.modifiedBy})` : props.modifiedBy}` : ""}
+        작성: ${props.creatorName ? `${escapeHtml(props.creatorName)} (${escapeHtml(props.createdBy)})` : escapeHtml(props.createdBy)}
+        ${props.modifiedBy ? `<br>수정: ${props.modifierName ? `${escapeHtml(props.modifierName)} (${escapeHtml(props.modifiedBy)})` : escapeHtml(props.modifiedBy)}` : ""}
       </div>
     </div>
   `,

@@ -19,6 +19,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session Setup
+if (!process.env.SESSION_SECRET) {
+  console.warn("WARNING: SESSION_SECRET is not set. Using insecure default. Set SESSION_SECRET in .env for production.");
+}
+
 app.use(
   cookieSession({
     name: "session",
@@ -282,10 +286,14 @@ app.post("/api/events/batch", ensureAuthenticated, async (req, res) => {
 
 app.put("/api/events/:id", ensureAuthenticated, async (req, res) => {
   try {
-    // Check ownership or admin
-    // Note: Ideally we should fetch the event first to check ownership.
-    // ... (comments kept for context) ...
-    // For this migration, I will just forward the request.
+    const owner = await sheets.getEventOwner(req.params.id);
+    if (!owner) {
+      return res.status(404).json({ message: "이벤트를 찾을 수 없습니다." });
+    }
+    const isOwner = owner.toLowerCase() === req.user.email.toLowerCase();
+    if (!isOwner && !req.user.isAdmin) {
+      return res.status(403).json({ message: "수정 권한이 없습니다." });
+    }
 
     const result = await sheets.updateEvent(req.params.id, req.body, req.user);
     res.json(result);
@@ -297,6 +305,15 @@ app.put("/api/events/:id", ensureAuthenticated, async (req, res) => {
 
 app.delete("/api/events/:id", ensureAuthenticated, async (req, res) => {
   try {
+    const owner = await sheets.getEventOwner(req.params.id);
+    if (!owner) {
+      return res.status(404).json({ message: "이벤트를 찾을 수 없습니다." });
+    }
+    const isOwner = owner.toLowerCase() === req.user.email.toLowerCase();
+    if (!isOwner && !req.user.isAdmin) {
+      return res.status(403).json({ message: "삭제 권한이 없습니다." });
+    }
+
     const result = await sheets.deleteEvent(req.params.id);
     res.json(result);
   } catch (error) {
